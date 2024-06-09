@@ -3,7 +3,9 @@ import pytesseract
 from PIL import Image
 import io
 import re
+import os
 import nltk
+from dotenv import load_dotenv
 from nltk.tokenize import sent_tokenize, word_tokenize
 import chainlit as cl
 import torch
@@ -23,8 +25,18 @@ UPLOAD_FOLDER = 'uploads/'
 # -----------------------------------------------------------------
 # Replace with your Hugging Face API token
 # -----------------------------------------------------------------
-huggingface_token = "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"
-HfFolder.save_token(huggingface_token)
+# Load environment variables from .env file
+load_dotenv()
+
+# Get the Hugging Face API token from the environment
+huggingface_token = os.getenv("HUGGING_FACE_API_TOKEN")
+
+# Check if the token is available
+if huggingface_token:
+    # Save the token
+    HfFolder.save_token(huggingface_token)
+else:
+    print("Hugging Face API token not found in the .env file.")
 
 # -----------------------------------------------------------------
 # Initialize models
