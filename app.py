@@ -10,17 +10,25 @@ import torch
 from transformers import pipeline, MarianMTModel, MarianTokenizer
 from huggingface_hub import HfFolder
 
+# -----------------------------------------------------------------
 # Download NLTK data
+# -----------------------------------------------------------------
 nltk.download('punkt')
 
+# -----------------------------------------------------------------
 # Global variables
+# -----------------------------------------------------------------
 UPLOAD_FOLDER = 'uploads/'
 
+# -----------------------------------------------------------------
 # Replace with your Hugging Face API token
+# -----------------------------------------------------------------
 huggingface_token = "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"
 HfFolder.save_token(huggingface_token)
 
+# -----------------------------------------------------------------
 # Initialize models
+# -----------------------------------------------------------------
 summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
 ner_model = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english")
 classifier_model = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
@@ -34,6 +42,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 translator.to(device)
 
 
+# -----------------------------------------------------------------
+# Extract text from PDF
+# -----------------------------------------------------------------
 def extract_text_from_pdf(pdf_path):
     text = ''
     doc = fitz.open(pdf_path)
@@ -44,6 +55,9 @@ def extract_text_from_pdf(pdf_path):
     return text.strip()
 
 
+# -----------------------------------------------------------------
+# Extract text from images in PDF
+# -----------------------------------------------------------------
 def extract_text_from_images(pdf_path):
     text = ''
     doc = fitz.open(pdf_path)
@@ -61,6 +75,9 @@ def extract_text_from_images(pdf_path):
     return text.strip()
 
 
+# -----------------------------------------------------------------
+# Preprocess text
+# -----------------------------------------------------------------
 def preprocess_text(input_text):
     clean_text = re.sub(r'[^A-Za-z0-9\s]', '', input_text)
     clean_text = re.sub(r'\s+', ' ', clean_text).strip()
@@ -69,6 +86,9 @@ def preprocess_text(input_text):
     return tokenized_sentences
 
 
+# -----------------------------------------------------------------
+# Extract information using NER
+# -----------------------------------------------------------------
 def extract_information(text):
     entities = ner_model(text)
     word_entities = {}
@@ -86,6 +106,9 @@ def extract_information(text):
     return word_entities.values()
 
 
+# -----------------------------------------------------------------
+# Classify document
+# -----------------------------------------------------------------
 def classify_document(text):
     if not text:
         return "No text available for classification."
@@ -93,12 +116,18 @@ def classify_document(text):
     return classes
 
 
+# -----------------------------------------------------------------
+# Translate text to Spanish
+# -----------------------------------------------------------------
 def translate_text_to_spanish(text):
     input_ids = translator_tokenizer.encode(text, return_tensors="pt").to(device)
     translated_text = translator.generate(input_ids=input_ids)
     return translator_tokenizer.decode(translated_text[0], skip_special_tokens=True)
 
 
+# -----------------------------------------------------------------
+# Process PDF file
+# -----------------------------------------------------------------
 async def process_pdf(file):
     file_path = file.path
     file_name = file.name
@@ -120,12 +149,18 @@ async def process_pdf(file):
     }
 
 
+# -----------------------------------------------------------------
+# Start chat
+# -----------------------------------------------------------------
 @cl.on_chat_start
 async def start():
     cl.user_session.set("pdf_document", None)
     await cl.Message(content="Welcome! Press 1 to upload a PDF file for processing.").send()
 
 
+# -----------------------------------------------------------------
+# Main chat handler
+# -----------------------------------------------------------------
 @cl.on_message
 async def main(message: cl.Message):
     user_document = cl.user_session.get("pdf_document")
@@ -163,6 +198,9 @@ async def main(message: cl.Message):
         await cl.Message(content="Please press 1 to upload a PDF file for processing.").send()
 
 
+# -----------------------------------------------------------------
+# Display extracted information
+# -----------------------------------------------------------------
 async def display_information_extracted(document):
     text = document['text']
     summary = summarizer(text, max_length=100, min_length=25, do_sample=False)
@@ -177,6 +215,9 @@ async def display_information_extracted(document):
     ).send()
 
 
+# -----------------------------------------------------------------
+# Display document classification
+# -----------------------------------------------------------------
 async def display_document_classified(document):
     classification = document['classification']
     formatted_classification = "\n".join(
@@ -186,6 +227,9 @@ async def display_document_classified(document):
     ).send()
 
 
+# -----------------------------------------------------------------
+# Translate document to Spanish
+# -----------------------------------------------------------------
 async def translate_document(document):
     translated_text = translate_text_to_spanish(document['text'])
     await cl.Message(
@@ -193,6 +237,9 @@ async def translate_document(document):
     ).send()
 
 
+# -----------------------------------------------------------------
+# Main entry point
+# -----------------------------------------------------------------
 if __name__ == "__main__":
     cl.connect()
     cl.listen()
